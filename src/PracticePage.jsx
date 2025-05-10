@@ -29,7 +29,7 @@ function PracticePage() {
   const fetchSidebarData = async () => {
     if (!user || !user.username) return;
     try {
-      const res = await fetch(`http://localhost:5000/api/entries?username=${user.username}`);
+      const res = await fetch(`https://cognify-zg0q.onrender.com/api/entries?username=${user.username}`);
       const data = await res.json();
       setSidebarData(data);
     } catch (err) {
@@ -122,7 +122,7 @@ function PracticePage() {
         const parsed = JSON.parse(jsonString);
         setFeedbackData(parsed);
         try {
-          await fetch("http://localhost:5000/api/entries/add", {
+          await fetch("https://cognify-zg0q.onrender.com/api/entries/add", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
@@ -167,7 +167,7 @@ function PracticePage() {
   try {
     if (!user || !user.username) return;
 
-    const response = await fetch('http://localhost:5000/api/entries/clear', {
+    const response = await fetch('https://cognify-zg0q.onrender.com/api/entries/clear', {
       method: 'DELETE',
       headers: {
         'Content-Type': 'application/json',
