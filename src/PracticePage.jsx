@@ -22,6 +22,15 @@ function PracticePage() {
   const [sidebarData, setSidebarData] = useState([]);
   const [selectedSidebarEntry, setSelectedSidebarEntry] = useState(null);
   const [showNotes, setShowNotes] = useState(false);
+  const [mcqList, setMcqList] = useState([]);
+const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
+const [selectedOptions, setSelectedOptions] = useState({});
+const [showMcqSection, setShowMcqSection] = useState(false);
+const [timeLeft, setTimeLeft] = useState(10 * 60); // 20 minutes
+const [mcqSubmitted, setMcqSubmitted] = useState(false);
+const [loadingMcqs, setLoadingMcqs] = useState(false);
+
+
 
   const { user } = useUser();      
   if (isLoaded && !isSignedIn) return <div className="p-10 text-center">Please sign in to access this page.</div>;
@@ -36,6 +45,88 @@ function PracticePage() {
       console.error("Failed to fetch sidebar data:", err);
     }
   };
+ const fetchMCQs = async () => {
+  setShowMcqSection(false);
+   setLoadingMcqs(true);  
+  setMcqList([]);
+  setCurrentQuestionIndex(0);
+  setSelectedOptions({});
+  setMcqSubmitted(false);
+  setTimeLeft(10 * 60);
+   // ⏱️ Set timer to 10 minutes
+
+  try {
+    const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GEMINI_API_KEY}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        contents: [{
+          role: "user",
+          parts: [{
+            text: `Generate 20 unique and diverse MCQs with 4 options and one correct answer in the domain of ${domainInput}. 
+
+Return the output as **plain JSON array only**, do NOT include markdown or explanation. Format example:
+[
+  {
+    "question": "What is the capital of France?",
+    "options": ["Paris", "London", "Berlin", "Madrid"],
+    "answer": "Paris"
+  },
+  ...
+]`
+          }]
+        }]
+      })
+    });
+
+    const data = await res.json();
+    let text = data?.candidates?.[0]?.content?.parts?.[0]?.text || "[]";
+
+    // 🧹 Remove code block wrapper if it exists
+    if (text.startsWith("```")) {
+      text = text.replace(/```(?:json)?/g, "").trim();
+    }
+
+    const mcqs = JSON.parse(text);
+    setMcqList(mcqs);
+     setShowMcqSection(true); 
+    
+  } catch (err) {
+    console.error("Failed to load MCQs:", err);
+    alert("Error generating MCQs. Please try again.");
+  }
+  finally {
+    setLoadingMcqs(false);         // Hide loading
+  }
+};
+
+
+
+useEffect(() => {
+  if (!showMcqSection || mcqSubmitted) return;
+
+  const timer = setInterval(() => {
+    setTimeLeft(prev => {
+      if (prev <= 1) {
+        clearInterval(timer);
+        handleMcqSubmit();
+        return 0;
+      }
+      return prev - 1;
+    });
+  }, 1000);
+
+  return () => clearInterval(timer);
+}, [showMcqSection, mcqSubmitted]);
+const handleMcqSubmit = () => {
+  setMcqSubmitted(true);
+};
+const score = mcqList.reduce((total, q, idx) => {
+  return total + (selectedOptions[idx] === q.answer ? 1 : 0);
+}, 0);
+
+const percentage = ((score / mcqList.length) * 100).toFixed(2);
+
 
   useEffect(() => {
     if (user) {
@@ -293,12 +384,107 @@ function PracticePage() {
   📝 Save Notes
 </button>
 
-              <button onClick={() => alert(`Start MCQs for ${domainInput}`)}>📋 Attempt MCQs</button>
+              <button
+  onClick={fetchMCQs}
+  disabled={!domainInput.trim()}
+  className="bg-white text-black px-4 py-2 rounded-md hover:bg-neutral-100"
+>
+  📋 Attempt MCQs
+</button>
+
             </div>
             <UserButton />
           </header>
 
           <main className="flex-1 overflow-y-auto pt-28 p-6 space-y-6 bg-gray-100 text-center">
+            {loadingMcqs && (
+  <div className="text-center text-gray-500 animate-pulse">
+    ⏳ Generating MCQs... Please wait.
+  </div>
+)}
+          {showMcqSection && (
+  <div className="max-w-3xl mx-auto bg-white p-6 rounded-xl shadow space-y-4 mt-6">
+    <h2 className="text-xl font-bold text-purple-700">🧠 MCQ Practice</h2>
+    <p className="text-gray-600">Time Left: {Math.floor(timeLeft / 60)}:{String(timeLeft % 60).padStart(2, '0')}</p>
+
+
+    {mcqList.length > 0 && !mcqSubmitted && (
+      <>
+        <div className="text-left">
+          <p className="font-semibold">Q{currentQuestionIndex + 1}: {mcqList[currentQuestionIndex].question}</p>
+          <div className="space-y-2 mt-2">
+            {mcqList[currentQuestionIndex].options.map((option, i) => (
+              <label key={i} className="block bg-gray-100 hover:bg-gray-200 p-2 rounded">
+                <input
+                  type="radio"
+                  name={`question-${currentQuestionIndex}`}
+                  value={option}
+                  checked={selectedOptions[currentQuestionIndex] === option}
+                  onChange={() => setSelectedOptions(prev => ({
+                    ...prev,
+                    [currentQuestionIndex]: option
+                  }))}
+                />
+                <span className="ml-2">{option}</span>
+              </label>
+            ))}
+          </div>
+        </div>
+
+        <div className="flex justify-between mt-4">
+          <button
+            onClick={() => setCurrentQuestionIndex(i => Math.max(i - 1, 0))}
+            disabled={currentQuestionIndex === 0}
+            className="bg-gray-300 px-4 py-2 rounded"
+          >
+            Previous
+          </button>
+          <button
+            onClick={() => setCurrentQuestionIndex(i => Math.min(i + 1, mcqList.length - 1))}
+            disabled={currentQuestionIndex === mcqList.length - 1}
+            className="bg-gray-300 px-4 py-2 rounded"
+          >
+            Next
+          </button>
+          <button
+            onClick={handleMcqSubmit}
+            className="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700"
+          >
+            Submit
+          </button>
+        </div>
+      </>
+    )}
+
+    {mcqSubmitted && (
+      <div className="text-center">
+        <h3 className="text-xl font-semibold text-blue-700">✅ Your Score: {score} / {mcqList.length}</h3>
+        <p className="text-lg text-gray-700">Performance: {percentage}%</p>
+        <div className="space-y-4 text-left max-w-3xl mx-auto bg-white p-4 rounded-lg shadow">
+      {mcqList.map((q, idx) => {
+        const userAnswer = selectedOptions[idx];
+        const isCorrect = userAnswer === q.answer;
+        return (
+          <div key={idx} className={`p-4 border rounded ${isCorrect ? 'border-green-500 bg-green-50' : 'border-red-500 bg-red-50'}`}>
+            <p className="font-semibold">Q{idx + 1}: {q.question}</p>
+            <p>🟢 Correct Answer: <strong>{q.answer}</strong></p>
+            <p>🧑‍💼 Your Answer: <strong>{userAnswer || 'No Answer'}</strong> {isCorrect ? '✅' : '❌'}</p>
+          </div>
+        );
+      })}
+    </div>
+
+    <button
+      className="mt-4 bg-blue-600 text-white px-4 py-2 rounded"
+      onClick={() => setShowMcqSection(false)}
+    >
+          Close MCQs
+        </button>
+      </div>
+    )}
+  </div>
+)}
+
             {showNotes && (
   <div className="bg-white p-4 rounded-xl shadow border max-w-3xl mx-auto mt-4">
     <h2 className="text-purple-700 font-medium mb-2">📝 Your Notes:</h2>

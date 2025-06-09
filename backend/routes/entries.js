@@ -38,6 +38,20 @@ router.put("/api/entries/:id/notes", async (req, res) => {
     res.status(500).json({ error: "Failed to update notes" });
   }
 });
+// DELETE /api/entries/clear
+router.delete('/api/entries/clear', async (req, res) => {
+  const { username } = req.body;
+  try {
+    if (!username) {
+      return res.status(400).json({ error: 'Username is required' });
+    }
+
+    await Entry.deleteMany({ name: username }); // only delete entries for the specific user
+    res.status(200).json({ message: `Entries for ${username} cleared` });
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to clear entries' });
+  }
+});
 
 
 export default router;
