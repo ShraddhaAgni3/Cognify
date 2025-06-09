@@ -39,7 +39,7 @@ router.put("/api/entries/:id/notes", async (req, res) => {
   }
 });
 // DELETE /api/entries/clear
-router.delete('/api/entries/clear', async (req, res) => {
+router.delete('/clear', async (req, res) => {
   const { username } = req.body;
   try {
     if (!username) {
