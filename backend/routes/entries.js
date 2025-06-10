@@ -28,18 +28,28 @@ router.get('/', async (req, res) => {
 
 // Add a note to an entry
 // PUT /api/entries/:id/notes
-router.put("/api/entries/:id/notes", async (req, res) => {
+// POST /api/entries/:id/add-note
+router.post('/:id/add-note', async (req, res) => {
   const { id } = req.params;
-  const { notes } = req.body;
+  const { note } = req.body;
+
   try {
-    const result = await Entry.findByIdAndUpdate(id, { notes }, { new: true });
-    res.json(result);
+    const updatedEntry = await Entry.findByIdAndUpdate(
+      id,
+      { $push: { notes: { notes: note } } },
+       { createdAt: new Date()},
+      { new: true }
+       
+    );
+
+    res.status(200).json(updatedEntry);
   } catch (error) {
-    res.status(500).json({ error: "Failed to update notes" });
+    res.status(500).json({ error: 'Failed to add note' });
   }
 });
+
 // DELETE /api/entries/clear
-router.delete('/api/entries/clear', async (req, res) => {
+router.delete('/clear', async (req, res) => {
   const { username } = req.body;
   try {
     if (!username) {

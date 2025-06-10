@@ -8,6 +8,8 @@
     "build": "vite build",
     "lint": "eslint .",
     "preview": "vite preview"
+    
+    
   },
   "dependencies": {
     "@clerk/clerk-react": "^5.30.0",

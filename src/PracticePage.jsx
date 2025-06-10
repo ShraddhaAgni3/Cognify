@@ -29,6 +29,7 @@ const [showMcqSection, setShowMcqSection] = useState(false);
 const [timeLeft, setTimeLeft] = useState(10 * 60); // 20 minutes
 const [mcqSubmitted, setMcqSubmitted] = useState(false);
 const [loadingMcqs, setLoadingMcqs] = useState(false);
+const [noteContent, setNoteContent] = useState('');
 
 
 
@@ -488,17 +489,46 @@ const percentage = ((score / mcqList.length) * 100).toFixed(2);
             {showNotes && (
   <div className="bg-white p-4 rounded-xl shadow border max-w-3xl mx-auto mt-4">
     <h2 className="text-purple-700 font-medium mb-2">📝 Your Notes:</h2>
-    <textarea
-      placeholder="Write your notes here..."
-      className="w-full p-2 border rounded-md min-h-[100px]"
-    />
+   <textarea
+  placeholder="Write your notes here..."
+  className="w-full p-2 border rounded-md min-h-[100px]"
+  value={noteContent}
+  onChange={(e) => setNoteContent(e.target.value)}
+/>
+
     <button
       className="mt-2 bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-md"
-      onClick={() => {
-        // Save logic goes here
-        alert('Note saved!');
-        setShowNotes(false); // Hide after saving
-      }}
+      onClick={async () => {
+  if (!noteContent.trim() || !selectedSidebarEntry?._id) {
+    alert("Select an entry to attach your note to.");
+    return;
+  }
+
+  try {
+    const res = await fetch(
+      `https://cognify-zg0q.onrender.com/api/entries/${selectedSidebarEntry._id}/add-note`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ note: noteContent }),
+      }
+    );
+
+    const data = await res.json();
+    if (res.ok) {
+      alert("Note saved!");
+      setNoteContent('');
+      setShowNotes(false);
+      fetchSidebarData(); // Refresh updated notes
+    } else {
+      alert("Failed to save note.");
+    }
+  } catch (err) {
+    console.error("Error saving note:", err);
+    alert("Something went wrong.");
+  }
+}}
+
     >
       💾 Save Note
     </button>
@@ -530,7 +560,23 @@ const percentage = ((score / mcqList.length) * 100).toFixed(2);
                     <p>{selectedSidebarEntry.idealAnswer}</p>
                   </div>
                 </div>
-              </>
+                    {selectedSidebarEntry?.notes?.length > 0 && (
+      <div className="bg-white p-4 rounded shadow border max-w-3xl mx-auto mt-4 text-left">
+        <h3 className="text-purple-700 font-semibold mb-2">📝 Saved Notes:</h3>
+        <ul className="space-y-2">
+          {selectedSidebarEntry.notes.map((n, idx) => (
+            <li key={idx} className="p-2 border rounded bg-gray-50">
+              <p>{n.notes}</p>
+              <p className="text-xs text-gray-500">🕒 {new Date(n.createdAt).toLocaleString()}</p>
+            </li>
+          ))}
+        </ul>
+      </div>
+    )}
+  </>
+
+              
+              
             ) :feedbackLoadingStatus ? (
               <div className="text-center text-gray-500">⏳ Analyzing your response...</div>
             ) : feedbackData ? (
