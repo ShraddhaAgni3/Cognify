@@ -62,26 +62,6 @@ router.delete('/clear', async (req, res) => {
     res.status(500).json({ error: 'Failed to clear entries' });
   }
 });
-// DELETE /api/entries/:entryId/notes/:noteId
-router.delete('/:entryId/notes/:noteId', async (req, res) => {
-  const { entryId, noteId } = req.params;
-
-  try {
-    const entry = await Entry.findByIdAndUpdate(
-      entryId,
-      { $pull: { notes: { _id: noteId } } },
-      { new: true }
-    );
-
-    if (!entry) {
-      return res.status(404).json({ error: 'Entry not found' });
-    }
-
-    res.status(200).json({ message: 'Note deleted', entry });
-  } catch (error) {
-    res.status(500).json({ error: 'Failed to delete note' });
-  }
-});
 
 
 
