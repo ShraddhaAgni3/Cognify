@@ -560,19 +560,46 @@ const percentage = ((score / mcqList.length) * 100).toFixed(2);
                     <p>{selectedSidebarEntry.idealAnswer}</p>
                   </div>
                 </div>
-                    {selectedSidebarEntry?.notes?.length > 0 && (
-      <div className="bg-white p-4 rounded shadow border max-w-3xl mx-auto mt-4 text-left">
-        <h3 className="text-purple-700 font-semibold mb-2">📝 Saved Notes:</h3>
-        <ul className="space-y-2">
-          {selectedSidebarEntry.notes.map((n, idx) => (
-            <li key={idx} className="p-2 border rounded bg-gray-50">
-              <p>{n.notes}</p>
-              <p className="text-xs text-gray-500">🕒 {new Date(n.createdAt).toLocaleString()}</p>
-            </li>
-          ))}
-        </ul>
-      </div>
-    )}
+                   {selectedSidebarEntry?.notes?.length > 0 && (
+  <div className="bg-white p-4 rounded shadow border max-w-3xl mx-auto mt-4 text-left">
+    <h3 className="text-purple-700 font-semibold mb-2">📝 Saved Notes:</h3>
+    <ul className="space-y-2">
+      {selectedSidebarEntry.notes.map((n) => (
+        <li key={n._id} className="p-2 border rounded bg-gray-50 flex justify-between items-start">
+          <div>
+            <p>{n.notes}</p>
+            <p className="text-xs text-gray-500">🕒 {new Date(n.createdAt).toLocaleString()}</p>
+          </div>
+          <button
+            className="text-red-600 hover:text-red-800 text-sm ml-4"
+            onClick={async () => {
+              const confirmed = confirm("Are you sure you want to delete this note?");
+              if (!confirmed) return;
+
+              try {
+                const res = await fetch(
+                  `https://cognify-zg0q.onrender.com/api/entries/${selectedSidebarEntry._id}/notes/${n._id}`,
+                  { method: "DELETE" }
+                );
+                if (res.ok) {
+                  alert("Note deleted!");
+                  fetchSidebarData(); // Refresh the sidebar & notes
+                } else {
+                  alert("Failed to delete the note.");
+                }
+              } catch (err) {
+                console.error("Error deleting note:", err);
+              }
+            }}
+          >
+            🗑️ Delete
+          </button>
+        </li>
+      ))}
+    </ul>
+  </div>
+)}
+
   </>
 
               
