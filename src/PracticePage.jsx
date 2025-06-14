@@ -221,6 +221,7 @@ const percentage = ((score / mcqList.length) * 100).toFixed(2);
               question: selectedQuestion,
               feedback: parsed.feedback,
               idealAnswer: parsed.correct_answer,
+              userAnswer: transcript,
               name: user.username,
               notes: parsed.notes
             }),

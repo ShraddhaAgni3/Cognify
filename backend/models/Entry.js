@@ -9,6 +9,7 @@ const entrySchema = new mongoose.Schema({
   question: { type: String, required: true },
   feedback: String,
   idealAnswer: String,
+   userAnswer: String, 
   name: { type: String, required: true },
   date: { type: Date, default: Date.now },
   notes: [noteSchema],
