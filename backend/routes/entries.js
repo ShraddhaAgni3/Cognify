@@ -62,6 +62,26 @@ router.delete('/clear', async (req, res) => {
     res.status(500).json({ error: 'Failed to clear entries' });
   }
 });
+// DELETE /api/entries/:entryId/notes/:noteIndex
+router.delete('/:entryId/notes/:noteIndex', async (req, res) => {
+  const { entryId, noteIndex } = req.params;
+
+  try {
+    const entry = await Entry.findById(entryId);
+    if (!entry) return res.status(404).json({ error: 'Entry not found' });
+
+    if (!entry.notes || !entry.notes[noteIndex]) {
+      return res.status(400).json({ error: 'Note index invalid' });
+    }
+
+    entry.notes.splice(noteIndex, 1);
+    await entry.save();
+
+    res.status(200).json({ message: 'Note deleted', entry });
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to delete note' });
+  }
+});
 
 
 

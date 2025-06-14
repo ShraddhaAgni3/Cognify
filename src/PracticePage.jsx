@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { SignedIn, UserButton, useAuth } from '@clerk/clerk-react';
 import './App.css';
 import { useUser } from '@clerk/clerk-react';
-import Messagebox from "./Messagebox";
+
 
 const Recognition = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
 Recognition.continuous = true;
@@ -560,19 +560,49 @@ const percentage = ((score / mcqList.length) * 100).toFixed(2);
                     <p>{selectedSidebarEntry.idealAnswer}</p>
                   </div>
                 </div>
-                    {selectedSidebarEntry?.notes?.length > 0 && (
-      <div className="bg-white p-4 rounded shadow border max-w-3xl mx-auto mt-4 text-left">
-        <h3 className="text-purple-700 font-semibold mb-2">📝 Saved Notes:</h3>
-        <ul className="space-y-2">
-          {selectedSidebarEntry.notes.map((n, idx) => (
-            <li key={idx} className="p-2 border rounded bg-gray-50">
-              <p>{n.notes}</p>
-              <p className="text-xs text-gray-500">🕒 {new Date(n.createdAt).toLocaleString()}</p>
-            </li>
-          ))}
-        </ul>
-      </div>
-    )}
+                   {selectedSidebarEntry?.notes?.length > 0 && (
+  <div className="bg-white p-4 rounded shadow border max-w-3xl mx-auto mt-4 text-left">
+    <h3 className="text-purple-700 font-semibold mb-2">📝 Saved Notes:</h3>
+    <ul className="space-y-2">
+      {selectedSidebarEntry.notes.map((n, idx) => (
+        <li key={idx} className="p-2 border rounded bg-gray-50 flex justify-between items-center">
+          <div>
+            <p>{n.notes}</p>
+            <p className="text-xs text-gray-500">🕒 {new Date(n.createdAt).toLocaleString()}</p>
+          </div>
+          <button
+            onClick={async () => {
+              const confirmDelete = confirm("Are you sure you want to delete this note?");
+              if (!confirmDelete) return;
+
+              try {
+                const res = await fetch(`https://cognify-zg0q.onrender.com/api/entries/${selectedSidebarEntry._id}/notes/${idx}`, {
+                  method: 'DELETE',
+                });
+                const data = await res.json();
+
+                if (res.ok) {
+                  alert("Note deleted!");
+                  fetchSidebarData(); // Refresh sidebar and selected entry
+                  setSelectedSidebarEntry(null); // Unselect to force refresh
+                } else {
+                  alert("Failed to delete note.");
+                }
+              } catch (err) {
+                console.error("Error deleting note:", err);
+                alert("Something went wrong.");
+              }
+            }}
+            className="text-red-600 hover:text-red-800 text-sm"
+          >
+            🗑️
+          </button>
+        </li>
+      ))}
+    </ul>
+  </div>
+)}
+
   </>
 
               

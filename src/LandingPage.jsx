@@ -22,7 +22,7 @@ function LandingPage() {
         </p>
 
         {/* Buttons */}
-        <div className="flex space-x-6">
+        <div className="bg-white rounded-xl shadow border m-auto p-2">
           <SignInButton>Sign in</SignInButton>
 
           
