@@ -305,7 +305,7 @@ const percentage = ((score / mcqList.length) * 100).toFixed(2);
               contents: [{
                 role: "user",
                 parts: [{
-                  text: `Give me a completely different and random technical interview question in the domain of ${domainInput}. Do NOT repeat any previous questions. Only return the question text. Random ID: ${randomNoise}`
+                  text: `Give me a completely different and random easy to medium level technical interview question in the domain of ${domainInput}. Do NOT repeat any previous questions. Only return the question text. Random ID: ${randomNoise}`
                 }]
               }]
             })
@@ -646,3 +646,5 @@ const percentage = ((score / mcqList.length) * 100).toFixed(2);
 }
 
 export default PracticePage;
+
+
