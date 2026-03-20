@@ -11,6 +11,7 @@ async function callGroq(prompt) {
       'Content-Type': 'application/json',
       'Authorization': `Bearer ${process.env.GROQ_API_KEY}`
     },
+    
     body: JSON.stringify({
       model: GROQ_MODEL,
       messages: [{ role: "user", content: prompt }],
