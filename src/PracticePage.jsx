@@ -55,7 +55,7 @@ function PracticePage() {
   const fetchSidebarData = async () => {
     if (!user || !user.username) return;
     try {
-      const res = await fetch(`http://localhost:5000/api/entries?username=${user.username}`);
+      const res = await fetch(`https://cognify-zg0q.onrender.com/api/entries?username=${user.username}`);
       const data = await res.json();
       setSidebarData(data);
     } catch (err) {
@@ -171,7 +171,7 @@ Return ONLY the JSON, no extra text.`
         setFeedbackData(parsed);
 
         try {
-          await fetch("http://localhost:5000/api/entries/add", {
+          await fetch("https://cognify-zg0q.onrender.com/api/entries/add", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
@@ -208,7 +208,7 @@ Return ONLY the JSON, no extra text.`
     setSidebarData([]);
     try {
       if (!user || !user.username) return;
-      const response = await fetch('http://localhost:5000/api/entries/clear', {
+      const response = await fetch('https://cognify-zg0q.onrender.com/api/entries/clear', {
         method: 'DELETE',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ username: user.username }),
@@ -337,7 +337,7 @@ Return ONLY the question text, nothing else.`
                 <button className="mt-2 bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-md" onClick={async () => {
                   if (!noteContent.trim() || !selectedSidebarEntry?._id) { alert("Select an entry to attach your note to."); return; }
                   try {
-                    const res = await fetch(`http://localhost:5000/api/entries/${selectedSidebarEntry._id}/add-note`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ note: noteContent }) });
+                    const res = await fetch(`https://cognify-zg0q.onrender.com/api/entries/${selectedSidebarEntry._id}/add-note`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ note: noteContent }) });
                     const data = await res.json();
                     if (res.ok) { alert("Note saved!"); setNoteContent(''); setShowNotes(false); fetchSidebarData(); }
                     else alert("Failed to save note.");
@@ -384,7 +384,7 @@ Return ONLY the question text, nothing else.`
                           <button onClick={async () => {
                             if (!confirm("Are you sure you want to delete this note?")) return;
                             try {
-                              const res = await fetch(`http://localhost:5000/api/entries/${selectedSidebarEntry._id}/notes/${idx}`, { method: 'DELETE' });
+                              const res = await fetch(`https://cognify-zg0q.onrender.com/api/entries/${selectedSidebarEntry._id}/notes/${idx}`, { method: 'DELETE' });
                               const data = await res.json();
                               if (res.ok) { alert("Note deleted!"); fetchSidebarData(); setSelectedSidebarEntry(null); }
                               else alert("Failed to delete note.");
