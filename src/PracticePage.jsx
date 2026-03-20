@@ -7,26 +7,7 @@ const Recognition = new (window.SpeechRecognition || window.webkitSpeechRecognit
 Recognition.continuous = true;
 Recognition.interimResults = true;
 
-const GROQ_API_KEY = import.meta.env.VITE_GROQ_API_KEY;
-const GROQ_URL = "https://api.groq.com/openai/v1/chat/completions";
-const GROQ_MODEL = "llama-3.3-70b-versatile";
-
-async function callGroq(prompt) {
-  const res = await fetch(GROQ_URL, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${GROQ_API_KEY}`
-    },
-    body: JSON.stringify({
-      model: GROQ_MODEL,
-      messages: [{ role: "user", content: prompt }],
-      temperature: 0.7
-    })
-  });
-  const data = await res.json();
-  return data?.choices?.[0]?.message?.content || '';
-}
+const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || "http://localhost:5000";
 
 function PracticePage() {
   const [isListening, setIsListening] = useState(false);
@@ -55,7 +36,7 @@ function PracticePage() {
   const fetchSidebarData = async () => {
     if (!user || !user.username) return;
     try {
-      const res = await fetch(`https://cognify-zg0q.onrender.com/api/entries?username=${user.username}`);
+      const res = await fetch(`${BACKEND_URL}/api/entries?username=${user.username}`);
       const data = await res.json();
       setSidebarData(data);
     } catch (err) {
@@ -73,19 +54,12 @@ function PracticePage() {
     setTimeLeft(10 * 60);
 
     try {
-      const text = await callGroq(
-        `Generate 20 unique and diverse MCQs with 4 options and one correct answer in the domain of ${domainInput}.
-IMPORTANT: The answer field must contain the EXACT full text of the correct option, NOT just A B C or D.
-Return ONLY a plain JSON array, no markdown, no explanation. Example:
-[{"question":"What is 2+2?","options":["1","2","3","4"],"answer":"4"},...]`
-      );
-
-      let cleaned = text.trim();
-      if (cleaned.startsWith("```")) {
-        cleaned = cleaned.replace(/```(?:json)?/g, "").trim();
-      }
-
-      const mcqs = JSON.parse(cleaned);
+      const res = await fetch(`${BACKEND_URL}/api/groq/mcqs`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ domain: domainInput })
+      });
+      const mcqs = await res.json();
       setMcqList(mcqs);
       setShowMcqSection(true);
     } catch (err) {
@@ -156,22 +130,18 @@ Return ONLY a plain JSON array, no markdown, no explanation. Example:
     setFeedbackLoadingStatus(true);
 
     try {
-      const modelResponse = await callGroq(
-        `You are an interview coach. Rate this answer (scale of 0 to 5) on correctness and completeness. Also give feedback and a perfect answer in this JSON format:
-{"correctness": number, "completeness": number, "feedback": string, "correct_answer": string}
-Question: ${selectedQuestion}
-Answer: ${transcript}
-Return ONLY the JSON, no extra text.`
-      );
+      const feedRes = await fetch(`${BACKEND_URL}/api/groq/feedback`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ question: selectedQuestion, answer: transcript })
+      });
+      const parsed = await feedRes.json();
 
       try {
-        const jsonStart = modelResponse.indexOf('{');
-        const jsonEnd = modelResponse.lastIndexOf('}');
-        const parsed = JSON.parse(modelResponse.slice(jsonStart, jsonEnd + 1));
         setFeedbackData(parsed);
 
         try {
-          await fetch("https://cognify-zg0q.onrender.com/api/entries/add", {
+          await fetch(`${BACKEND_URL}/api/entries/add`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
@@ -208,7 +178,7 @@ Return ONLY the JSON, no extra text.`
     setSidebarData([]);
     try {
       if (!user || !user.username) return;
-      const response = await fetch('https://cognify-zg0q.onrender.com/api/entries/clear', {
+      const response = await fetch(`${BACKEND_URL}/api/entries/clear`, {
         method: 'DELETE',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ username: user.username }),
@@ -230,12 +200,13 @@ Return ONLY the JSON, no extra text.`
     setSelectedQuestion("Generating question...");
 
     try {
-      const previousList = previousQuestions.slice(-5).join('\n- ');
-      const question = await callGroq(
-        `Give me 1 unique easy to medium level technical interview question in the domain of ${domainInput}. 
-Do NOT repeat these previous questions:\n- ${previousList}
-Return ONLY the question text, nothing else.`
-      );
+      const res = await fetch(`${BACKEND_URL}/api/groq/question`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ domain: domainInput, previousQuestions })
+      });
+      const data = await res.json();
+      const question = data.question;
 
       if (question && !previousQuestions.includes(question)) {
         setSelectedQuestion(question.trim());
@@ -337,7 +308,7 @@ Return ONLY the question text, nothing else.`
                 <button className="mt-2 bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-md" onClick={async () => {
                   if (!noteContent.trim() || !selectedSidebarEntry?._id) { alert("Select an entry to attach your note to."); return; }
                   try {
-                    const res = await fetch(`https://cognify-zg0q.onrender.com/api/entries/${selectedSidebarEntry._id}/add-note`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ note: noteContent }) });
+                    const res = await fetch(`${BACKEND_URL}/api/entries/${selectedSidebarEntry._id}/add-note`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ note: noteContent }) });
                     const data = await res.json();
                     if (res.ok) { alert("Note saved!"); setNoteContent(''); setShowNotes(false); fetchSidebarData(); }
                     else alert("Failed to save note.");
@@ -384,7 +355,7 @@ Return ONLY the question text, nothing else.`
                           <button onClick={async () => {
                             if (!confirm("Are you sure you want to delete this note?")) return;
                             try {
-                              const res = await fetch(`https://cognify-zg0q.onrender.com/api/entries/${selectedSidebarEntry._id}/notes/${idx}`, { method: 'DELETE' });
+                              const res = await fetch(`${BACKEND_URL}/api/entries/${selectedSidebarEntry._id}/notes/${idx}`, { method: 'DELETE' });
                               const data = await res.json();
                               if (res.ok) { alert("Note deleted!"); fetchSidebarData(); setSelectedSidebarEntry(null); }
                               else alert("Failed to delete note.");
