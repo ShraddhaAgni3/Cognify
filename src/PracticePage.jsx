@@ -1,6 +1,6 @@
 import { useEffect, useState, useRef } from 'react';
-import MCQPage from './Mcqpage';
-import ATSPage from './ATSPage';
+import MCQPage from './Mcqpage.jsx';
+import ATSPage from './Atspage.jsx';
 import { SignedIn, UserButton, useAuth } from '@clerk/clerk-react';
 import './App.css';
 import { useUser } from '@clerk/clerk-react';

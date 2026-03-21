@@ -1,6 +1,6 @@
 import { useState, useRef } from "react";
 import { SignInButton, SignUpButton } from "@clerk/clerk-react";
-import MCQPage from "./Mcqpage";
+import MCQPage from "./Mcqpage.jsx";
 
 const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || "http://localhost:5000";
 
