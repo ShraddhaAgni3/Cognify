@@ -1,6 +1,6 @@
 import { useEffect, useState, useRef } from 'react';
-import MCQPage from './Mcqpage.jsx';
-import ATSPage from './Atspage.jsx';
+import MCQPage from './Mcqpage';
+import ATSPage from './ATSPage';
 import { SignedIn, UserButton, useAuth } from '@clerk/clerk-react';
 import './App.css';
 import { useUser } from '@clerk/clerk-react';
@@ -10,6 +10,24 @@ Recognition.continuous = true;
 Recognition.interimResults = true;
 
 const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || "http://localhost:5000";
+
+const LANGUAGES = [
+  { id: 'javascript', name: 'JavaScript ✓', supported: true, defaultCode: '// Write your solution here\nconsole.log("Hello, World!");' },
+  { id: 'python', name: 'Python ✓', supported: true, defaultCode: '# Write your solution here\nprint("Hello, World!")' },
+  { id: 'java', name: 'Java', supported: false, defaultCode: 'public class Main {\n  public static void main(String[] args) {\n    System.out.println("Hello, World!");\n  }\n}' },
+  { id: 'cpp', name: 'C++', supported: false, defaultCode: '#include <iostream>\nusing namespace std;\n\nint main() {\n  cout << "Hello, World!" << endl;\n  return 0;\n}' },
+  { id: 'typescript', name: 'TypeScript', supported: false, defaultCode: 'const message: string = "Hello, World!";\nconsole.log(message);' },
+  { id: 'go', name: 'Go', supported: false, defaultCode: 'package main\nimport "fmt"\n\nfunc main() {\n  fmt.Println("Hello, World!")\n}' },
+  { id: 'rust', name: 'Rust', supported: false, defaultCode: 'fn main() {\n  println!("Hello, World!");\n}' },
+  { id: 'csharp', name: 'C#', supported: false, defaultCode: 'using System;\n\nclass Program {\n  static void Main() {\n    Console.WriteLine("Hello, World!");\n  }\n}' },
+  { id: 'kotlin', name: 'Kotlin', supported: false, defaultCode: 'fun main() {\n  println("Hello, World!")\n}' },
+];
+
+const isCodeQuestion = (q) => {
+  const keywords = ['write', 'code', 'implement', 'function', 'program', 'algorithm', 'class', 'method', 'loop', 'array', 'string', 'sort', 'likhein', 'banao', 'likho', 'solution', 'debug', 'fix', 'reverse', 'print', 'calculate', 'find'];
+  return keywords.some(k => q.toLowerCase().includes(k));
+};
+
 export default function PracticePage() {
   const [isListening, setIsListening] = useState(false);
   const [transcript, setTranscript] = useState('');
