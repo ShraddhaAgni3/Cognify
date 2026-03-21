@@ -4,8 +4,8 @@ import dotenv from 'dotenv';
 import cors from 'cors';
 import entriesRoutes from './routes/entries.js';
 import groqRoutes from './routes/groq.js';
-import atsRoutes from './routes/ats.js';
-import { runCode } from './codeRunner.js';
+import atsRoutes from './routes/Ats.js';
+import { runCode } from './Coderunner.js';
 
 dotenv.config();
 const PORT = process.env.PORT || 5000;
