@@ -1,4 +1,4 @@
-# Cognify — AI-Powered Interactive Practice Platform
+# AnswerlyProAI — AI-Powered Interactive Practice Platform
 
 Cognify is a web application designed to help users practice and improve their skills by generating domain-specific questions, recording spoken answers, and providing AI-driven feedback. It offers interactive multiple-choice quizzes, note-taking capabilities, and personalized question management.
 
