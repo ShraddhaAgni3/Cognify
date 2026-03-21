@@ -1,6 +1,6 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { SignInButton, SignUpButton } from "@clerk/clerk-react";
-import MCQPage from "./Mcqpage.jsx";
+import MCQPage from "./MCQPage";
 
 const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || "http://localhost:5000";
 
@@ -12,29 +12,47 @@ export default function LandingPage() {
   const [atsLoading, setAtsLoading] = useState(false);
   const [atsResult, setAtsResult] = useState(null);
   const [dragOver, setDragOver] = useState(false);
-  const [atsChecksLeft, setAtsChecksLeft] = useState(() => {
-    const saved = localStorage.getItem('atsChecksLeft');
-    return saved !== null ? parseInt(saved) : 5;
-  });
+  const [atsChecksLeft, setAtsChecksLeft] = useState(5);
+
+  const getClientId = () => {
+    let id = localStorage.getItem('ats_client_id');
+    if (!id) {
+      id = 'guest_' + Math.random().toString(36).slice(2) + Date.now().toString(36);
+      localStorage.setItem('ats_client_id', id);
+    }
+    return id;
+  };
+
+  useEffect(() => {
+    const clientId = getClientId();
+    fetch(`${BACKEND_URL}/api/ats/usage/${clientId}`)
+      .then(r => r.json())
+      .then(data => { if (data.checksLeft !== undefined) setAtsChecksLeft(data.checksLeft); })
+      .catch(() => {});
+  }, []);
+
   const signInRef = useRef(null);
 
   const handleATSCheck = async () => {
     if (!resumeFile) return;
-    if (atsChecksLeft <= 0) {
-      signInRef.current?.click();
-      return;
-    }
+    if (atsChecksLeft <= 0) { signInRef.current?.click(); return; }
     setAtsLoading(true);
     setAtsResult(null);
     try {
+      const clientId = getClientId();
       const formData = new FormData();
       formData.append("resume", resumeFile);
+      formData.append("clientId", clientId);
+      formData.append("isLoggedIn", "false");
       const res = await fetch(`${BACKEND_URL}/api/ats/check`, { method: "POST", body: formData });
       const data = await res.json();
+      if (data.error === 'limit_reached') {
+        setAtsChecksLeft(0);
+        signInRef.current?.click();
+        return;
+      }
       setAtsResult(data);
-      const newCount = atsChecksLeft - 1;
-      setAtsChecksLeft(newCount);
-      localStorage.setItem('atsChecksLeft', newCount);
+      if (data.checksLeft !== undefined) setAtsChecksLeft(data.checksLeft);
     } catch {
       setAtsResult({ error: "Failed to analyze resume. Please try again." });
     } finally {
