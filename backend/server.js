@@ -4,6 +4,8 @@ import dotenv from 'dotenv';
 import cors from 'cors';
 import entriesRoutes from './routes/entries.js';
 import groqRoutes from './routes/groq.js';
+import atsRoutes from './routes/ats.js';
+import { runCode } from './codeRunner.js';
 
 dotenv.config();
 const PORT = process.env.PORT || 5000;
@@ -14,12 +16,12 @@ app.use(express.json());
 
 app.use('/api/entries', entriesRoutes);
 app.use('/api/groq', groqRoutes);
+app.use('/api/ats', atsRoutes);
+app.post('/api/run', runCode);
 
 mongoose.connect(process.env.VITE_MONGO_URI)
   .then(() => {
     console.log('MongoDB connected');
-    app.listen(PORT, () => {
-      console.log(`Server running on port ${PORT}`);
-    });
+    app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
   })
   .catch(err => console.error('MongoDB connection error:', err));
