@@ -1,67 +1,75 @@
 import express from 'express';
 import multer from 'multer';
-import { unlink, readFile } from 'fs/promises';
+import fs from 'fs';
 import os from 'os';
 import { createRequire } from 'module';
 
 const require = createRequire(import.meta.url);
+const pdfParse = require('pdf-parse'); // ✅ FIXED
+const mammoth = require('mammoth');
+
 const router = express.Router();
+
 const GROQ_URL = "https://api.groq.com/openai/v1/chat/completions";
 const GROQ_MODEL = "llama-3.3-70b-versatile";
 
-const ACCEPTED_TYPES = [
-  'application/pdf',
-  'application/msword',
-  'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-  'text/plain',
-];
-
+// 📦 Multer config
 const upload = multer({
   dest: os.tmpdir(),
   limits: { fileSize: 5 * 1024 * 1024 },
   fileFilter: (req, file, cb) => {
-    if (ACCEPTED_TYPES.includes(file.mimetype)) cb(null, true);
+    const allowed = [
+      'application/pdf',
+      'application/msword',
+      'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+      'text/plain'
+    ];
+    if (allowed.includes(file.mimetype)) cb(null, true);
     else cb(new Error('Only PDF, DOC, DOCX, or TXT files allowed'));
   }
 });
 
-async function extractText(filePath, mimetype) {
-  const buffer = await readFile(filePath);
 
-  // TXT — direct read
+// ======================
+// 📄 TEXT EXTRACTION
+// ======================
+async function extractText(filePath, mimetype) {
+
+  // ✅ TXT
   if (mimetype === 'text/plain') {
-    return buffer.toString('utf-8').trim();
+    return fs.readFileSync(filePath, 'utf-8').trim();
   }
 
-  // DOCX — use mammoth
+  // ✅ DOCX (BEST)
   if (mimetype === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document') {
     try {
-      const mammoth = require('mammoth');
-      const result = await mammoth.extractRawText({ buffer });
+      const result = await mammoth.extractRawText({ path: filePath });
       const text = result.value?.trim();
       if (text && text.length > 50) {
-        console.log('mammoth docx success, length:', text.length);
+        console.log('DOCX parsed, length:', text.length);
         return text;
       }
     } catch (e) {
-      console.log('mammoth failed:', e.message);
+      console.log('DOCX failed:', e.message);
     }
     return '';
   }
 
-  // PDF — try pdf-parse
+  // ⚠️ PDF (fallback only)
   if (mimetype === 'application/pdf') {
     try {
-      const pdfParseModule = require('pdf-parse');
-      const pdfParse = pdfParseModule.default || pdfParseModule;
+      const buffer = fs.readFileSync(filePath);
       const data = await pdfParse(buffer);
+
       const text = data.text?.trim();
-      if (text && text.length > 80 && /[a-zA-Z]{3,}/.test(text)) {
-        console.log('pdf-parse success, length:', text.length);
+      if (text && text.length > 80) {
+        console.log('PDF parsed, length:', text.length);
         return text;
+      } else {
+        console.log('PDF text too short');
       }
     } catch (e) {
-      console.log('pdf-parse failed:', e.message);
+      console.log('PDF failed:', e.message);
     }
     return '';
   }
@@ -69,6 +77,10 @@ async function extractText(filePath, mimetype) {
   return '';
 }
 
+
+// ======================
+// 🤖 GROQ CALL
+// ======================
 async function callGroq(resumeText) {
   const res = await fetch(GROQ_URL, {
     method: 'POST',
@@ -81,70 +93,89 @@ async function callGroq(resumeText) {
       messages: [
         {
           role: "system",
-          content: "You are an ATS resume analyzer. Respond with ONLY a valid JSON object. No markdown, no code blocks, no explanation."
+          content: "You are an ATS resume analyzer. Always respond ONLY in JSON."
         },
         {
           role: "user",
-          content: `Analyze this resume for ATS compatibility. Score 0-100.
+          content: `Analyze this resume. Score 0-100.
 
 Resume:
 ${resumeText.slice(0, 3500)}
 
-Return ONLY this JSON:
-{"score": <0-100>, "feedback": "<2-3 sentence assessment>", "suggestions": ["tip 1", "tip 2", "tip 3", "tip 4"]}`
+Return JSON:
+{"score": number, "feedback": "text", "suggestions": ["tip1","tip2","tip3","tip4"]}`
         }
       ],
       temperature: 0.1,
       response_format: { type: "json_object" }
     })
   });
+
   const data = await res.json();
   return data?.choices?.[0]?.message?.content || '';
 }
 
-router.post('/check', upload.single('resume'), async (req, res) => {
-  if (!req.file) return res.status(400).json({ error: 'No file uploaded' });
 
-  let resumeText = '';
-  try {
-    resumeText = await extractText(req.file.path, req.file.mimetype);
-    await unlink(req.file.path).catch(() => {});
-  } catch (err) {
-    await unlink(req.file.path).catch(() => {});
-    console.error('Extraction error:', err);
+// ======================
+// 🚀 ROUTE
+// ======================
+router.post('/check', upload.single('resume'), async (req, res) => {
+
+  if (!req.file) {
+    return res.status(400).json({ error: 'No file uploaded' });
   }
 
+  const filePath = req.file.path;
+  let resumeText = '';
+
+  try {
+    resumeText = await extractText(filePath, req.file.mimetype);
+  } catch (err) {
+    console.error('Extraction error:', err);
+  } finally {
+    try { fs.unlinkSync(filePath); } catch (e) {}
+  }
+
+  // ❌ If extraction failed
   if (!resumeText || resumeText.length < 80) {
     return res.json({
       score: 0,
-      feedback: 'Could not extract text from your file. Please try uploading a DOCX or TXT file for best results.',
+      feedback: 'Could not extract text properly.',
       suggestions: [
-        'Upload a .docx file (Word document) — works best',
-        'Or save your resume as a .txt file',
-        'PDF works only if it is text-based (not scanned)',
-        'Avoid image-based or scanned PDFs'
+        'Upload DOCX (best format)',
+        'Avoid scanned PDFs',
+        'Use text-based resume',
+        'Try saving from Word/Google Docs'
       ]
     });
   }
 
   try {
     const response = await callGroq(resumeText);
-    console.log('Groq response:', response.slice(0, 150));
 
-    let cleaned = response.replace(/```json/gi, '').replace(/```/g, '').trim();
-    const jsonStart = cleaned.indexOf('{');
-    const jsonEnd = cleaned.lastIndexOf('}');
-    if (jsonStart === -1) throw new Error('No JSON');
+    let cleaned = response
+      .replace(/```json/gi, '')
+      .replace(/```/g, '')
+      .trim();
 
-    const parsed = JSON.parse(cleaned.slice(jsonStart, jsonEnd + 1));
-    res.json({
+    const start = cleaned.indexOf('{');
+    const end = cleaned.lastIndexOf('}');
+
+    if (start === -1) throw new Error('Invalid JSON');
+
+    const parsed = JSON.parse(cleaned.slice(start, end + 1));
+
+    return res.json({
       score: Math.min(100, Math.max(0, Number(parsed.score) || 0)),
-      feedback: String(parsed.feedback || 'Analysis complete.'),
-      suggestions: Array.isArray(parsed.suggestions) ? parsed.suggestions.slice(0, 5) : []
+      feedback: parsed.feedback || 'Analysis done',
+      suggestions: Array.isArray(parsed.suggestions)
+        ? parsed.suggestions.slice(0, 5)
+        : []
     });
+
   } catch (err) {
     console.error('Groq error:', err.message);
-    res.status(500).json({ error: 'Failed to analyze. Please try again.' });
+    return res.status(500).json({ error: 'Analysis failed' });
   }
 });
 
