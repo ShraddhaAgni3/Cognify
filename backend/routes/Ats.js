@@ -3,7 +3,7 @@ import multer from 'multer';
 import fs from 'fs';
 import os from 'os';
 import { createRequire } from 'module';
-import GuestUsage from '../models/GuestUsage.js';
+import GuestUsage from '../models/Guestusage';
 
 const require = createRequire(import.meta.url);
 const pdfParse = require('pdf-parse');
